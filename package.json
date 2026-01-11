@@ -2,6 +2,7 @@
   "name": "shim-arib-html5",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "tsx server/server.ts",
