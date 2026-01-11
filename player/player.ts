@@ -8,12 +8,6 @@ import { decodeMMTTLV } from "./decode_tlv";
 import { ntp64TimestampToDate } from "arib-mmt-tlv-ts/ntp.js";
 import { MMTTLVSeekLocator, SeekInformation } from "./mmttlv-seek-locator";
 
-try {
-    navigator.serviceWorker.register("/dist/sw.js", { scope: "/" });
-} catch (e) {
-    console.error("failed to register sw", e);
-}
-
 function wait(delay: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, delay));
 }
@@ -26,7 +20,14 @@ const muteButton = document.querySelector("#mute") as HTMLButtonElement;
 const seekTimeButton = document.querySelector("#seektime") as HTMLButtonElement;
 const seekInput = document.querySelector("#seek") as HTMLInputElement;
 const playButton = document.querySelector("#play") as HTMLButtonElement;
+const messagesTextArea = document.querySelector("#messages") as HTMLTextAreaElement;
 const iframe = document.querySelector("iframe")!;
+
+try {
+    navigator.serviceWorker.register("/dist/sw.js", { scope: "/" });
+} catch (e) {
+    messagesTextArea.value += "ServiceWorkerの登録に失敗しました。\n";
+}
 
 fileInput.addEventListener("change", () => {
     if (fileInput.files?.[0] != null) {
@@ -153,6 +154,8 @@ async function play(
     dataBroadcasting.cachedFiles = cachedFiles;
     let entryPoint: string | undefined;
     let entryPointLoaded = false;
+    let useTOT = true;
+    let totCount = 0;
     const mmttlvReader = decodeMMTTLV({
         browserCallback(message) {
             switch (message.type) {
@@ -185,8 +188,10 @@ async function play(
                                 [...baseDirectoryPath.split("/"), ...initialPath.split("/")]
                                     .filter((x) => x.length > 0)
                                     .join("/");
+                            messagesTextArea.value += "データ放送の情報を受信しました。\n";
                             if (cachedFiles.has(entryPoint)) {
                                 entryPointLoaded = true;
+                                messagesTextArea.value += "データ放送を起動します。\n";
                                 iframe.src = `/d/${clientId}/` + entryPoint.replace(/^\/*/, "");
                             }
                         }
@@ -206,7 +211,17 @@ async function play(
                     dataBroadcasting.applicationService = message.applicationService;
                     break;
                 case "ntp":
+                    useTOT = false;
                     dataBroadcasting.now = message.time;
+                    break;
+                case "tot":
+                    if (useTOT) {
+                        dataBroadcasting.now = message.time;
+                    }
+                    totCount += 1;
+                    if (totCount === 3 && useTOT) {
+                        messagesTextArea.value += "NTPが含まれていません。不正な入力です。\n";
+                    }
                     break;
                 case "updateBIT":
                     dataBroadcasting.serviceIdToBroadcasterId = message.serviceIdToBroadcasterId;
@@ -238,6 +253,7 @@ async function play(
             if (!iframe.src && entryPoint != null && cachedFiles.has(entryPoint) && !entryPointLoaded) {
                 const ep = entryPoint;
                 entryPointLoaded = true;
+                messagesTextArea.value += "データ放送を起動します。\n";
                 wait(1000).then(() => {
                     iframe.src = `/d/${clientId}/` + ep.replace(/^\/*/, "");
                 });

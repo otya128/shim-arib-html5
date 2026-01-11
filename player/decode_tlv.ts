@@ -487,6 +487,12 @@ export function decodeMMTTLV(options: DecodeMMTTLVOptions): MMTTLVReader {
             time: ntp64TimestampToDate(event.ntp.transmitTimestamp).getTime(),
         });
     });
+    reader.addEventListener("tot", (event) => {
+        browserCallback({
+            type: "tot",
+            time: new Date(mjdBCDToUnixEpoch(event.table.jstTime) * 1000).getTime(),
+        });
+    });
     const mfuBuffers = new Map<number, { sequenceNumber: number; queue: Uint8Array[] }>();
     reader.addEventListener("mpu", (event) => {
         const c = captionComponents.get(event.mmtHeader.packetId);
