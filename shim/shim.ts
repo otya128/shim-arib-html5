@@ -557,9 +557,6 @@ ShimDate.UTC = OrigDate.UTC;
 
 contentWindow.Date = ShimDate as DateConstructor;
 
-const localStorageSetItem = localStorage.setItem.bind(localStorage);
-const localStorageGetItem = localStorage.getItem.bind(localStorage);
-
 function getLocalStorageOrigin(key: string): string {
     // Ureg
     if (key.startsWith("ureg")) {
@@ -608,18 +605,28 @@ function getLocalStorageOrigin(key: string): string {
     return `arib2://aid_${window.parent.dataBroadcasting.application?.applicationId?.toString(16)}.oid_${window.parent.dataBroadcasting.application?.organizationId?.toString(16)}`;
 }
 
-localStorage.setItem = (key, value) => {
+const storagePrototype: Storage = Object.getPrototypeOf(contentWindow.localStorage);
+const origSetItem = storagePrototype.setItem;
+const origGetItem = storagePrototype.getItem;
+
+storagePrototype.setItem = function setItem(this: Storage, key, value) {
+    if (this !== contentWindow.localStorage) {
+        return origSetItem.call(this, key, value);
+    }
     const realKey = new URLSearchParams([
         ["origin", getLocalStorageOrigin(key)],
         ["key", key],
     ]);
-    localStorageSetItem(realKey.toString(), value);
+    origSetItem.call(this, realKey.toString(), value);
 };
 
-localStorage.getItem = (key) => {
+storagePrototype.getItem = function getItem(this: Storage, key) {
+    if (this !== contentWindow.localStorage) {
+        return origGetItem.call(this, key);
+    }
     const realKey = new URLSearchParams([
         ["origin", getLocalStorageOrigin(key)],
         ["key", key],
     ]);
-    return localStorageGetItem(realKey.toString());
+    return origGetItem.call(this, realKey.toString());
 };
