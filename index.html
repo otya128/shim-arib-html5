@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+  </head>
+  <body>
+    url:
+    <input id="url" type="text" style="width: 100%; display: block;">
+    <input id="file" type="file" style="width: 100%; display: block;">
+    <button id="play">
+      play
+    </button>
+    <input id="seek" type="range" min="0" max="10000" step="1" style="width: 100%" value="0" style="width: 100%; display: block;">
+    <input id="time" type="text" value="00:00">
+    <button id="seektime">
+      seek
+    </button>
+    <button id="unmute">
+      unmute
+    </button>
+    <button id="mute">
+      mute
+    </button>
+    <p>
+      <a href="https://github.com/otya128/shim-arib-html5">https://github.com/otya128/shim-arib-html5</a>
+    </p>
+    <p>
+      操作方法: ↓にフォーカス当てる
+    </p>
+    <p>
+      Dキー: リモコンのdボタン、B, R, G, Yキー: リモコンの青、赤、緑、黄ボタン、数字キー: リモコンの数字ボタン
+    </p>
+    <iframe style="display: block; width: 3840px; height: 2160px; zoom: 0.25;"></iframe>
+    <script type="module" src="/dist/player.js"></script>
+  </body>
+</html>
