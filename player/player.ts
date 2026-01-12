@@ -339,20 +339,25 @@ async function play(
         if (done) {
             break;
         }
-        mmttlvReader.push(value);
-        if (currentTime != null && beginTime != null) {
-            const realElapsed = currentTime.real - beginTime.real;
-            const streamElapsed = currentTime.stream.getTime() - beginTime.stream.getTime();
-            if (streamElapsed - realElapsed > 30) {
-                await wait(streamElapsed - realElapsed);
-                currentTime = undefined;
+        // 512 KiB
+        const chunkSize = 512 * 1024;
+        for (let chunkPos = 0; chunkPos < value.length; chunkPos += chunkSize) {
+            const chunk = value.subarray(chunkPos, chunkPos + chunkSize);
+            mmttlvReader.push(chunk);
+            if (currentTime != null && beginTime != null) {
+                const realElapsed = currentTime.real - beginTime.real;
+                const streamElapsed = currentTime.stream.getTime() - beginTime.stream.getTime();
+                if (streamElapsed - realElapsed > 30) {
+                    await wait(streamElapsed - realElapsed);
+                    currentTime = undefined;
+                }
             }
-        }
-        if (iframe.contentWindow != null) {
-            iframe.contentWindow.postMessage({
-                type: "mmttlv",
-                value,
-            });
+            if (iframe.contentWindow != null) {
+                iframe.contentWindow.postMessage({
+                    type: "mmttlv",
+                    value,
+                });
+            }
         }
     }
 }
