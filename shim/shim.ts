@@ -150,6 +150,7 @@ declare global {
             now?: number;
             serviceIdToBroadcasterId?: Map<number, number>;
             cachedFiles?: Set<string>;
+            noVideo?: boolean;
         };
         VK_RED: number;
         VK_GREEN: number;
@@ -493,6 +494,9 @@ HTMLObjectElement.prototype.removeCaptionListener = function removeCaptionListen
     }
 };
 document.addEventListener("DOMContentLoaded", () => {
+    if (window.parent.dataBroadcasting.noVideo) {
+        return;
+    }
     const object = document.querySelector(`object[type="video/x-arib2-broadcast"]`);
     if (object == null) {
         return;

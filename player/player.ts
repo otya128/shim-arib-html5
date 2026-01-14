@@ -8,8 +8,16 @@ import { decodeMMTTLV } from "./decode_tlv";
 import { ntp64TimestampToDate } from "arib-mmt-tlv-ts/ntp.js";
 import { MMTTLVSeekLocator, SeekInformation } from "./mmttlv-seek-locator";
 
-function wait(delay: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, delay));
+function wait(delay: number, signal?: AbortSignal): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const id = setTimeout(resolve, delay);
+        if (signal != null) {
+            signal.addEventListener("abort", () => {
+                clearTimeout(id);
+                reject(new DOMException("AbortError", signal.reason ?? "AbortError"));
+            });
+        }
+    });
 }
 
 const urlInput = document.querySelector("#url") as HTMLInputElement;
@@ -20,6 +28,7 @@ const muteButton = document.querySelector("#mute") as HTMLButtonElement;
 const seekTimeButton = document.querySelector("#seektime") as HTMLButtonElement;
 const seekInput = document.querySelector("#seek") as HTMLInputElement;
 const playButton = document.querySelector("#play") as HTMLButtonElement;
+const noVideoInput = document.querySelector("#novideo") as HTMLInputElement;
 const messagesTextArea = document.querySelector("#messages") as HTMLTextAreaElement;
 const iframe = document.querySelector("iframe")!;
 
@@ -120,6 +129,7 @@ async function play(
     pos: number,
     seekInfo?: SeekInformation,
 ) {
+    const noVideo = noVideoInput.checked;
     const res = await fetch(streamUrl, {
         signal,
         headers: {
@@ -131,6 +141,7 @@ async function play(
         return;
     }
     window.dataBroadcasting = {
+        noVideo,
         currentEvent: {
             original_network_id: 0,
             tlv_stream_id: 0,
@@ -334,25 +345,25 @@ async function play(
             beginTime = currentTime;
         }
     });
-    while (true) {
+    while (!signal.aborted) {
         const { value, done } = await reader.read();
         if (done) {
             break;
         }
         // 512 KiB
         const chunkSize = 512 * 1024;
-        for (let chunkPos = 0; chunkPos < value.length; chunkPos += chunkSize) {
+        for (let chunkPos = 0; !signal.aborted && chunkPos < value.length; chunkPos += chunkSize) {
             const chunk = value.subarray(chunkPos, chunkPos + chunkSize);
             mmttlvReader.push(chunk);
             if (currentTime != null && beginTime != null) {
                 const realElapsed = currentTime.real - beginTime.real;
                 const streamElapsed = currentTime.stream.getTime() - beginTime.stream.getTime();
                 if (streamElapsed - realElapsed > 30) {
-                    await wait(streamElapsed - realElapsed);
+                    await wait(streamElapsed - realElapsed, signal);
                     currentTime = undefined;
                 }
             }
-            if (iframe.contentWindow != null) {
+            if (!signal.aborted && !noVideo && iframe.contentWindow != null) {
                 iframe.contentWindow.postMessage({
                     type: "mmttlv",
                     value,
